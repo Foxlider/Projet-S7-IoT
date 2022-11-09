@@ -109,7 +109,7 @@ if __name__ == '__main__':
         if (len(SerialPorts) == 0):
                 print("MAIN>> No serial port available. Closing.")
                 exit(0)
-        SERIALPORT = SerialPorts[0]
+        SERIALPORT = SerialPorts[-1]
         initUART()
         f= open(FILENAME,"a")
         print ('MAIN>> Press Ctrl-C to quit.')
