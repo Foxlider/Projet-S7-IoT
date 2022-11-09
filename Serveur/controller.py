@@ -23,16 +23,18 @@ class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
         data = self.request[0].strip()
         socket = self.request[1]
         current_thread = threading.current_thread()
-        print("{}: client: {}, wrote: {}".format(current_thread.name, self.client_address, data))
+        print("UDP >> {}: client: {}, wrote: {}".format(current_thread.name, self.client_address, data))
         if data != "":
                         if data in MICRO_COMMANDS: # Send message through UART
+                                print(f"UDP >> sending {data} to micro:bit Gateway")
                                 sendUARTMessage(data)
                                 
                         elif data == "getValues()": # Sent last value received from micro-controller
+                                print(f"UDP >> Sending {LAST_VALUE} to COntroller App Client")
                                 socket.sendto(LAST_VALUE, self.client_address) 
                                 # TODO: Create last_values_received as global variable      
                         else:
-                                print("Unknown message: ",data)
+                                print("UDP >> Unknown message: ",data)
 
 class ThreadedUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
     pass
@@ -58,11 +60,11 @@ def initUART():
         ser.rtscts = False     #disable hardware (RTS/CTS) flow control
         ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
         #ser.writeTimeout = 0     #timeout for write
-        print('Starting Up Serial Monitor')
+        print('UART>> Starting Up Serial Monitor')
         try:
                 ser.open()
         except serial.SerialException:
-                print("Serial {} port not available".format(SERIALPORT))
+                print("UART>> Serial {} port not available".format(SERIALPORT))
                 exit()
 
 def serial_ports():
@@ -95,7 +97,7 @@ def serial_ports():
 
 def sendUARTMessage(msg):
     ser.write(msg)
-    print("Message <" + msg + "> sent to micro-controller." )
+    print("UART>> Message <" + msg + "> sent to micro-controller." )
 
 
 # Main program logic follows:
@@ -105,12 +107,12 @@ if __name__ == '__main__':
         timeStamp = datetime.now()
         print(SerialPorts)
         if (len(SerialPorts) == 0):
-                print("No serial port available. Closing.")
+                print("MAIN>> No serial port available. Closing.")
                 exit(0)
         SERIALPORT = SerialPorts[0]
         initUART()
         f= open(FILENAME,"a")
-        print ('Press Ctrl-C to quit.')
+        print ('MAIN>> Press Ctrl-C to quit.')
 
         server = ThreadedUDPServer((HOST, UDP_PORT), ThreadedUDPRequestHandler)
 
@@ -119,15 +121,15 @@ if __name__ == '__main__':
 
         try:
                 server_thread.start()
-                print("Server started at {} port {}".format(HOST, UDP_PORT))
+                print("MAIN>> Server started at {} port {}".format(HOST, UDP_PORT))
                 while ser.isOpen() : 
                     data_str = ser.readline().decode("utf-8")
                     f.write(data_str)
                     LAST_VALUE = data_str
                     prevTimestamp = timeStamp
                     timeStamp = datetime.now()
-                    timedelta = timeStamp-prevTimestamp
-                    print(timeStamp, " (", timedelta.seconds, ':', timedelta.microseconds , ") >" , data_str, end='')
+                    timedelta = round((timeStamp-prevTimestamp).total_seconds() * 1000)
+                    print(f"SER >> {timeStamp} ({str(timedelta).rjust(5)}ms) >{data_str}", end='')
                         # time.sleep(1) # comment this maybe I dunno
                         # if (ser.inWaiting() > 0): # if incoming bytes are waiting 
                         #         data_str = ser.read(ser.inWaiting()) 
