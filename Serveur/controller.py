@@ -5,9 +5,11 @@ import argparse
 import signal
 import sys
 import socket
-import SocketServer
+import glob
+import socketserver
 import serial
 import threading
+from datetime import datetime
 
 HOST           = "0.0.0.0"
 UDP_PORT       = 10000
@@ -15,7 +17,7 @@ MICRO_COMMANDS = ["TL" , "LT"]
 FILENAME        = "values.txt"
 LAST_VALUE      = ""
 
-class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
+class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         data = self.request[0].strip()
@@ -32,7 +34,7 @@ class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
                         else:
                                 print("Unknown message: ",data)
 
-class ThreadedUDPServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
+class ThreadedUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
     pass
 
 
@@ -56,14 +58,40 @@ def initUART():
         ser.rtscts = False     #disable hardware (RTS/CTS) flow control
         ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
         #ser.writeTimeout = 0     #timeout for write
-        print 'Starting Up Serial Monitor'
+        print('Starting Up Serial Monitor')
         try:
                 ser.open()
         except serial.SerialException:
                 print("Serial {} port not available".format(SERIALPORT))
                 exit()
 
+def serial_ports():
+    """ Lists serial port names
 
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
 
 def sendUARTMessage(msg):
     ser.write(msg)
@@ -72,6 +100,14 @@ def sendUARTMessage(msg):
 
 # Main program logic follows:
 if __name__ == '__main__':
+        SerialPorts = serial_ports()
+        prevTimestamp = datetime.now()
+        timeStamp = datetime.now()
+        print(SerialPorts)
+        if (len(SerialPorts) == 0):
+                print("No serial port available. Closing.")
+                exit(0)
+        SERIALPORT = SerialPorts[0]
         initUART()
         f= open(FILENAME,"a")
         print ('Press Ctrl-C to quit.')
@@ -85,12 +121,19 @@ if __name__ == '__main__':
                 server_thread.start()
                 print("Server started at {} port {}".format(HOST, UDP_PORT))
                 while ser.isOpen() : 
-                        # time.sleep(100)
-                        if (ser.inWaiting() > 0): # if incoming bytes are waiting 
-                                data_str = ser.read(ser.inWaiting()) 
-                                f.write(data_str)
-                                LAST_VALUE = data_str
-                                print(data_str)
+                    data_str = ser.readline().decode("utf-8")
+                    f.write(data_str)
+                    LAST_VALUE = data_str
+                    prevTimestamp = timeStamp
+                    timeStamp = datetime.now()
+                    timedelta = timeStamp-prevTimestamp
+                    print(timeStamp, " (", timedelta.seconds, ':', timedelta.microseconds , ") >" , data_str, end='')
+                        # time.sleep(1) # comment this maybe I dunno
+                        # if (ser.inWaiting() > 0): # if incoming bytes are waiting 
+                        #         data_str = ser.read(ser.inWaiting()) 
+                        #         f.write(data_str)
+                        #         LAST_VALUE = data_str
+                        #         print(data_str)
         except (KeyboardInterrupt, SystemExit):
                 server.shutdown()
                 server.server_close()
