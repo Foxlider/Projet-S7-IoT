@@ -82,3 +82,5 @@ lint/tmp/
 # lint/reports/
 
 values.txt
+yotta_modules/
+yotta_targets/
