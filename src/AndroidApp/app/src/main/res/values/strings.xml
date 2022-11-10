@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Gestionnaire de capteurs</string>
+    <string name="iptext">IP</string>
+    <string name="porttext">Port</string>
+    <string name="affichagetext">Mode d\'affichage</string>
+    <string name="clear">Vider l\'affichage</string>
+    <string name="modify">Valider les modifications</string>
+    <string name="temp">Température</string>
+    <string name="lum">Luminosité</string>
+    <string name="hum">Humidité</string>
+    <string name="pres">Pression</string>
+    <string name="uv">Ultraviolet</string>
+    <string name="inf">Infrarouge</string>
+</resources>
