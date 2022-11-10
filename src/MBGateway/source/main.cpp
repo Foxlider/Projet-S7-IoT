@@ -5,27 +5,46 @@
 
 MicroBit uBit;
 MicroBitSerial serial(USBTX, USBRX);
+const int KEY_CRYPT = 8;
+int KEY_UNCRYPT = (KEY_CRYPT * -1);
+
+ManagedString shift(int key, ManagedString text) {
+    ManagedString result = "";
+    char ascii;
+
+    for (int i = 0; i<text.length(); i++) {
+        ascii = (text.charAt(i) + key - 32 ) % 94 + 32;
+        result = result + ascii;
+    }
+    return result;
+}
 
 void onButton(MicroBitEvent e)
-{    
+{   
+    ManagedString message;
     if (uBit.buttonA.isPressed()) { 
-        uBit.radio.datagram.send("TL");
-        uBit.display.scroll("TL", 40);
+        message = "PT";
     }
     if (uBit.buttonB.isPressed()) { 
-        uBit.radio.datagram.send("LT");
-        uBit.display.scroll("LT", 40);
+        message = "TH";
     }
+    sendToMBSensor(message);
+}
+
+void sendToMBSensor(ManagedString message) {
+    uBit.display.scrollAsync(message, 40);
+    ManagedString messageCrypt = shift(KEY_CRYPT, message);
+    ManagedString toSend(messageCrypt);
+    uBit.radio.datagram.send(toSend);
 }
 
 
 void onData(MicroBitEvent e) {
     ManagedString s = uBit.radio.datagram.recv();
     uBit.display.scrollAsync(s, 40);
-    ManagedString toSend = s + "\n";
+    ManagedString toSend(s + "\n");
     serial.send(toSend);
 }
-
 
 int main() { 
     uBit.init();
