@@ -9,6 +9,7 @@ import glob
 import socketserver
 import serial
 import threading
+import json 
 from datetime import datetime
 
 HOST           = "0.0.0.0"
@@ -16,6 +17,14 @@ UDP_PORT       = 10000
 MICRO_COMMANDS = ["TL" , "LT"]
 FILENAME        = "values.txt"
 LAST_VALUE      = ""
+LAST_OBJ = {
+                "source" : "SER",
+                "id" : "8-00",
+                "data" : {
+                    "temperature" : 0,
+                    "luminosity" : 0
+                }
+            }
 
 class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
 
@@ -25,16 +34,18 @@ class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
         current_thread = threading.current_thread()
         print("UDP >> {}: client: {}, wrote: {}".format(current_thread.name, self.client_address, data))
         if data != "":
-                        if data in MICRO_COMMANDS: # Send message through UART
-                                print(f"UDP >> sending {data} to micro:bit Gateway")
-                                sendUARTMessage(data)
-                                
-                        elif data == "getValues()": # Sent last value received from micro-controller
-                                print(f"UDP >> Sending {LAST_VALUE} to COntroller App Client")
-                                socket.sendto(LAST_VALUE, self.client_address) 
-                                # TODO: Create last_values_received as global variable      
-                        else:
-                                print("UDP >> Unknown message: ",data)
+            data_s = data.decode("utf-8")
+
+            if data in MICRO_COMMANDS: # Send message through UART
+                    print(f"UDP >> sending {data} to micro:bit Gateway")
+                    sendUARTMessage(data)
+                    
+            elif data_s == "getValues()": # Sent last value received from micro-controller
+                    print(f"UDP >> Sending {LAST_VALUE} to COntroller App Client")
+                    socket.sendto(json.dumps(LAST_OBJ), self.client_address) 
+                    # TODO: Create last_values_received as global variable      
+            else:
+                    print("UDP >> Unknown message: ",data)
 
 class ThreadedUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
     pass
@@ -130,6 +141,18 @@ if __name__ == '__main__':
                     timeStamp = datetime.now()
                     timedelta = round((timeStamp-prevTimestamp).total_seconds() * 1000)
                     print(f"SER >> {timeStamp} ({str(timedelta).rjust(5)}ms) >{data_str}", end='')
+
+                    json_out = json.loads(data_str)
+                    LAST_OBJ = {
+                        "source" : json_out["source"],
+                        "id" : json_out["id"],
+                        "data" : {
+                            "temperature" : json_out["temperature"],
+                            "luminosity" : json_out["luminosity"]
+                        }
+                    }
+
+
                         # time.sleep(1) # comment this maybe I dunno
                         # if (ser.inWaiting() > 0): # if incoming bytes are waiting 
                         #         data_str = ser.read(ser.inWaiting()) 
