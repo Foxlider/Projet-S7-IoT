@@ -22,30 +22,47 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
-#include "bme280.h"
 #include "MicroBit.h"
+#include "ssd1306.h"
+#include "bme280.h"
+#include "veml6070.h"
+#include "tsl256x.h"
 
-MicroBitI2C i2c(I2C_SDA0,I2C_SCL0);
 MicroBit uBit;
+MicroBitI2C i2c(I2C_SDA0,I2C_SCL0);
+MicroBitPin P0(MICROBIT_ID_IO_P0, MICROBIT_PIN_P0, PIN_CAPABILITY_DIGITAL_OUT);
+
 ManagedString order = "";
 
-void onData(MicroBitEvent e)
-{
-    order = uBit.radio.datagram.recv();
-    //uBit.display.scroll(uBit.radio.datagram.recv(), 50);
+const int KEY_CRYPT = 8;
+int KEY_UNCRYPT = (KEY_CRYPT * -1);
+
+ManagedString shift(int key, ManagedString text) {
+    ManagedString result = "";
+    char ascii;
+
+    for (int i = 0; i<text.length(); i++) {
+        ascii = (text.charAt(i) + key - 32 ) % 94 + 32;
+        result = result + ascii;
+    }
+    return result;
 }
 
+void onData(MicroBitEvent)
+{
+    order = shift(KEY_UNCRYPT, uBit.radio.datagram.recv());
+}
 
 int main()
 {
-
-
     // Initialise the micro:bit runtime.
     uBit.init();
     uBit.messageBus.listen(MICROBIT_ID_RADIO, MICROBIT_RADIO_EVT_DATAGRAM, onData);
 
     uBit.radio.enable();
     uBit.radio.setGroup(8);
+
+    char tmp[10];
 
     ManagedString temperature;
     ManagedString humidity;
@@ -55,65 +72,73 @@ int main()
     ManagedString light;
 
     ManagedString allValues;
-    ManagedString printedValues;
 
+    ssd1306 screen(&uBit, &i2c, &P0);
     bme280 bme(&uBit,&i2c);
-    uint32_t pression = 0;
-    int32_t temp = 0;
-    uint16_t humidite = 0;
+    uint32_t presValue = 0;
+    int32_t tempValue = 0;
+    uint16_t humiValue = 0;
+    
+    veml6070 veml(&uBit,&i2c);
+    uint16_t uvValue = 0;
 
+    tsl256x tsl(&uBit,&i2c);
+    uint16_t combValue =0;
+    uint16_t irValue = 0;
+    uint32_t luxValue = 0;
+    
     while(1){
-        allValues = "";
-        printedValues = "";
-        bme.sensor_read(&pression, &temp, &humidite);
-        temperature = (ManagedString)bme.compensate_temperature(temp);
-        allValues = allValues + temperature + ";";
-        humidity = (ManagedString)bme.compensate_humidity(humidite);
-        allValues = allValues + humidity + ";";
-        pressure = (ManagedString)(bme.compensate_pressure(pression)/100);
-        allValues = allValues + pressure + ";";
-        uv = "U";
-        allValues = allValues + uv + ";";
-        ir = "I";
-        allValues = allValues + ir + ";";
-        light = "L";
-        allValues = allValues + light + ";";
 
+        bme.sensor_read(&presValue, &tempValue, &humiValue);
+        sprintf(tmp, "%d", ((double)bme.compensate_temperature(tempValue))/100);
+        temperature = ManagedString(tmp); 
+        sprintf(tmp, "%d", bme.compensate_humidity(humiValue));
+        humidity = ManagedString(tmp);
+        sprintf(tmp, "%d", bme.compensate_pressure(presValue)/100);
+        pressure = ManagedString(tmp);
+        
+        veml.sensor_read(&uvValue);
+        
+        tsl.sensor_read(&combValue, &irValue, &luxValue);
+        
+        // allValues = "{\"source\":\"MBS\",\"id\":\"8-A0\",\"data\":{";
+        // allValues = allValues + "\"temperature\":" + "" + ",";
+        // allValues = allValues + "\"humidity\":" + "" + ",";
+        // allValues = allValues + "\"pressure\":" + "" + "";
+        // allValues = allValues + "}}";
+        uBit.radio.datagram.send("bite");
+
+        int j = 0;
         for (int i = 0; i < order.length(); i++){
             switch (order.charAt(i))
             {
             case 'T':
-                printedValues = printedValues + temperature;
+                temperature = "Temperature: " + temperature + " C";  
+                screen.display_line(j++,0,temperature.toCharArray());
                 break;
             case 'H':
-                printedValues = printedValues + humidity;
+                humidity = "Humidity: " + humidity;
+                screen.display_line(j++,0,humidity.toCharArray());
                 break;
             case 'P':
-                printedValues = printedValues + pressure;
+                pressure = "Pressure: " + pressure + " hPa";
+                screen.display_line(j++,0,pressure.toCharArray());
                 break;
             case 'U':
-                printedValues = printedValues + uv;
                 break;
             case 'I':
-                printedValues = printedValues + ir;
                 break;
             case 'L':
-                printedValues = printedValues + light;
                 break;
             default:
                 break;
             }
         }
-        uBit.display.scroll(allValues, 50);
-        uBit.radio.datagram.send(allValues);
+        screen.update_screen();
         uBit.sleep(1000);
     }
-
     uBit.radio.disable();
 
-    // If main exits, there may still be other fibers running or registered event handlers etc.
-    // Simply release this fiber, which will mean we enter the scheduler. Worse case, we then
-    // sit in the idle task forever, in a power efficient sleep.
     release_fiber();
 }
 
