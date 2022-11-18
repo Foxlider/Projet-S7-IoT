@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "IoT_Controller": {
+      "commandName": "Project"
+    },
+    "Server COM8": {
+      "commandName": "Project",
+      "commandLineArgs": "-port COM8"
+    }
+  }
+}
