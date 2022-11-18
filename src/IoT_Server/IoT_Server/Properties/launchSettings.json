@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "IoT_Server": {
+      "commandName": "Project"
+    },
+    "IoT_Server COM8": {
+      "commandName": "Project",
+      "commandLineArgs": "-uart COM8"
+    }
+  }
+}
