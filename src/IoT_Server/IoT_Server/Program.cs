@@ -1,11 +1,14 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using Microsoft.Win32.SafeHandles;
-
+using System.Globalization;
 using System.IO.Ports;
-using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks.Dataflow;
+using System.Xml;
+
+using Newtonsoft.Json;
+
 
 Logger.Log(LogType.MAIN,$"Booting up...");
 if (args.Length > 0)
@@ -44,15 +47,23 @@ else
 s.Server(UDP_PORT);
 
 //Récupération des ports UART
-var ports = SerialPort.GetPortNames();
+List<string> ports;
+try
+{ ports = SerialPort.GetPortNames().ToList(); }
+catch (Exception e)
+{
+    Logger.Log(LogType.UART, $"\t{e}");
+    Logger.Log(LogType.UART, $"Defaulting to {SERIALPORT}");
+    ports = new() { SERIALPORT };
+}
 Logger.Log(LogType.UART,$"AVAILABLE PORTS");
 foreach (var port in ports)
 { Logger.Log(LogType.UART, $"\t{port}"); }
 
-if(ports.Length == 0)
+if(ports.Count == 0)
 {
-    Logger.Error(LogType.UART,$"NO UART PORT AVAILABLE.");
-    Logger.Log(LogType.MAIN,$"SHUT DOWN");
+    Logger.Error(LogType.UART, $"NO UART PORT AVAILABLE.");
+    Logger.Log(LogType.MAIN, $"SHUT DOWN");
     s.Close();
 }
     
@@ -64,26 +75,26 @@ if (args.Contains("-uart"))
     var port = args[i+1];
     if (ports.Contains(port))
     { 
-        Logger.Log(LogType.UART,$"UART OVERRIDE : {port}");
+        Logger.Log(LogType.UART, $"UART OVERRIDE : {port}");
         SERIALPORT = args[i+1]; 
     }
     else
     {
         SERIALPORT = ports.Last();
-        Logger.Error(LogType.UART,$"{port} UNAVAILABLE. DEFAULTING TO {SERIALPORT}");
+        Logger.Error(LogType.UART, $"{port} UNAVAILABLE. DEFAULTING TO {SERIALPORT}");
     }
 
 }
 else
 {
     //Le dernier port UART est généralement le port sur lequel on a connecté la gateway
-    Logger.Log(LogType.UART,$"NO UART PORT SPECIFIED, DEFAULTING TO LAST AVAILABLE");
+    Logger.Log(LogType.UART, $"NO UART PORT SPECIFIED, DEFAULTING TO LAST AVAILABLE");
     SERIALPORT = ports.Last();
 }
     
 
 //SETUP de la communication avec la Gateway
-Logger.Log(LogType.UART,$"OPENING {SERIALPORT} FOR UART COMMUNICATION");
+Logger.Log(LogType.UART, $"OPENING {SERIALPORT} FOR UART COMMUNICATION");
 Globals._serialPort = new SerialPort(SERIALPORT, BAUDRATE, Parity.None, 8, StopBits.One);
 Globals._serialPort.ReadTimeout = -1;       // |Pas de timeout
 Globals._serialPort.WriteTimeout = -1;      // |
@@ -93,7 +104,10 @@ Globals._serialPort.DataReceived += _serialPort_DataReceived;
 
 //Connexion au port UART
 try
-{ Globals._serialPort.Open(); }
+{ 
+    Globals._serialPort.Open();
+    Logger.Log(LogType.UART, $"{SERIALPORT} OPENED");
+}
 catch (Exception e)
 { 
     Logger.Error(LogType.UART, e.ToString());
@@ -114,17 +128,34 @@ void _serialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
 };
 
 
-
+Logger.Log(LogType.MAIN, $"Press any key to initiate shutdown");
 //SHUTDOWN SEQUENCE
 Console.ReadKey();
 Globals._serialPort.Close();
 s.Close(); //Fixed closing bug (System.ObjectDisposedException)
            //Bugfix allows to relaunch server
-Logger.Log(LogType.MAIN,$"Closed Server \nPress any key to exit");
+Logger.Log(LogType.MAIN, $"Closed Server \nPress any key to exit");
 Console.ReadKey();
 
 
 
+
+class JsonMessage
+{
+    public string source { get; set; }
+    public string id { get; set; }
+    public DataMessage data { get; set; }
+}
+class DataMessage
+{
+    public string format;
+    public float temperature;
+    public int humidity;
+    public int pressure;
+    public int luminosity;
+    public int uv;
+    public int ir;
+}
 
 /// <summary>
 /// Reception et Transmission de données vers un Contoleur par messages UDP
@@ -159,7 +190,7 @@ public class UDPSocket
             return;
         }
 
-        Logger.Log(LogType.UDP,$"CONNECTED TO {IPAddress.Any}:{port}");
+        Logger.Log(LogType.UDP, $"CONNECTED TO {IPAddress.Any}:{port}");
         Receive();
     }
 
@@ -191,7 +222,7 @@ public class UDPSocket
         {
             State so = (State)ar.AsyncState;
             int bytes = _socket.EndSend(ar);
-            Logger.Log(LogType.UDP,$"SEND: {bytes}, {text}");
+            Logger.Log(LogType.UDP, $"SEND: {bytes}, {text}");
         }, state);
     }
 
@@ -206,8 +237,8 @@ public class UDPSocket
         using var client = new UdpClient();
         try
         {
-            client.Send(data, data.Length, ep.Address.ToString(), 10000);
-            Logger.Log(LogType.UDP,$"SENT: {ep.Address}: {text}");
+            client.Send(data, data.Length, ep.Address.ToString(), ep.Port);
+            Logger.Log(LogType.UDP, $"SENT: {ep.Address}:{ep.Port} : {text}");
         }
         catch (Exception e)
         { Logger.Error(LogType.UDP, e.ToString()); }
@@ -245,19 +276,19 @@ public class UDPSocket
                 switch (output)
                 {
                     //Demande du Controleur pour recevoir les valeurs des capteurs
-                    case string s when s.StartsWith("getValues()"):
-                        Logger.Log(LogType.UDP,$"Sending {Globals.LAST_DATA} to Controller App Client");
-                        Respond((IPEndPoint)epFrom, output);
+                    case string s when s.StartsWith("getValue()"):
+                        Logger.Log(LogType.UDP, $"Sending {Globals.LAST_DATA} to Controller App Client");
+                        Respond((IPEndPoint)epFrom, Globals.DataToJson());
                         break;
 
                     //Reception d'une commande par le Controleur a destination des Capteurs
                     case string s when s.Contains('L'):
-                        Logger.Log(LogType.UDP,$"Sending Command to micro:bit Gateway");
+                        Logger.Log(LogType.UDP, $"Sending Command to micro:bit Gateway");
                         Globals._serialPort.WriteLine(s);
                         break;
                     //Message ACK du Controleur pour notifier de la reception de données
-                    case string s when s.StartsWith("OK"):
-                        Logger.Log(LogType.UDP,$"Controller App Client ACK");
+                    case string s when s.StartsWith("Données reçues"):
+                        Logger.Log(LogType.UDP, $"Controller App Client ACK");
                         break;
                     //Echo pour le debug
                     case string s when s.StartsWith("echo"):
@@ -265,7 +296,7 @@ public class UDPSocket
                         Respond((IPEndPoint)epFrom, output);
                         break;
                     default:
-                        Logger.Log(LogType.UDP,$"UNKNOWN MESSAGE {output}");
+                        Logger.Log(LogType.UDP, $"UNKNOWN MESSAGE {output}");
                         break;
                 }
             }
@@ -284,12 +315,28 @@ public static class Globals
     /// <summary>
     /// Dernieres données du capteur micto:bit
     /// </summary>
-    public static string LAST_DATA;
+    public static string LAST_DATA = "21.88|3577|983|125|14|0";
 
     /// <summary>
     /// Connexion actuelle au port UART
     /// </summary>
     public static SerialPort _serialPort;
+
+    public static string DataToJson()
+    {
+        var values = LAST_DATA.Split('|');
+        
+        var data = new DataMessage();
+        float.TryParse(values[0], NumberStyles.Any, CultureInfo.InvariantCulture, out data.temperature);
+        int.TryParse(values[1], out data.humidity);
+        int.TryParse(values[2], out data.pressure);
+        int.TryParse(values[3], out data.luminosity);
+        int.TryParse(values[4], out data.ir);
+        int.TryParse(values[5], out data.uv);
+        var obj = new JsonMessage { id = "8-4F", source = "MBG", data = data };
+        string output = JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented); ;
+        return output;
+    }
 }
 
 
