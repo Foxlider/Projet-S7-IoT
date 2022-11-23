@@ -6,6 +6,10 @@
     "IoT_Server COM8": {
       "commandName": "Project",
       "commandLineArgs": "-uart COM8"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
     }
   }
 }
