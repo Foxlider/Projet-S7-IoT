@@ -32,10 +32,12 @@ MicroBit uBit;
 MicroBitI2C i2c(I2C_SDA0,I2C_SCL0);
 MicroBitPin P0(MICROBIT_ID_IO_P0, MICROBIT_PIN_P0, PIN_CAPABILITY_DIGITAL_OUT);
 
-ManagedString order = "";
+ManagedString order = "T";
 
 const int KEY_CRYPT = 8;
 int KEY_UNCRYPT = (KEY_CRYPT * -1);
+const uint8_t NUMBER_OF_LINE_SCREEN = 8;
+const uint8_t NUMBER_OF_COL_SCREEN = 16;
 
 ManagedString shift(int key, ManagedString text) {
     ManagedString result = "";
@@ -51,6 +53,13 @@ ManagedString shift(int key, ManagedString text) {
 void onData(MicroBitEvent)
 {
     order = shift(KEY_UNCRYPT, uBit.radio.datagram.recv());
+}
+
+void displayLine(ssd1306* screen, uint8_t line, uint8_t col, const char* text)
+{
+    if (line < NUMBER_OF_LINE_SCREEN && line >= 0 && col < NUMBER_OF_COL_SCREEN && col >= 0){
+        screen->display_line(line, col, text);
+    }
 }
 
 int main()
@@ -69,7 +78,7 @@ int main()
     ManagedString pressure;
     ManagedString uv;
     ManagedString ir;
-    ManagedString light;
+    ManagedString lux;
 
     ManagedString allValues;
 
@@ -88,9 +97,8 @@ int main()
     uint32_t luxValue = 0;
     
     while(1){
-
         bme.sensor_read(&presValue, &tempValue, &humiValue);
-        sprintf(tmp, "%d", ((double)bme.compensate_temperature(tempValue))/100);
+        sprintf(tmp, "%d.%d", bme.compensate_temperature(tempValue) / 100, bme.compensate_temperature(tempValue) % 100);
         temperature = ManagedString(tmp); 
         sprintf(tmp, "%d", bme.compensate_humidity(humiValue));
         humidity = ManagedString(tmp);
@@ -98,40 +106,53 @@ int main()
         pressure = ManagedString(tmp);
         
         veml.sensor_read(&uvValue);
-        
+        uv = ManagedString((int)uvValue);
+
         tsl.sensor_read(&combValue, &irValue, &luxValue);
+        ir = ManagedString((int)irValue);
+        lux = ManagedString((int)luxValue);
         
-        // allValues = "{\"source\":\"MBS\",\"id\":\"8-A0\",\"data\":{";
-        // allValues = allValues + "\"temperature\":" + "" + ",";
-        // allValues = allValues + "\"humidity\":" + "" + ",";
-        // allValues = allValues + "\"pressure\":" + "" + "";
-        // allValues = allValues + "}}";
-        uBit.radio.datagram.send("bite");
+        allValues = temperature + "|" + humidity + "|" + pressure + "|" + lux + "|" + ir + "|" + uv;
+        uBit.radio.datagram.send(allValues);
 
         int j = 0;
+        temperature = temperature + " C";
+        humidity = "Humidity: " + humidity;
+        pressure = "Pressure: " + pressure + " hPa";
+        uv = "UV: " + uv + " unit";
+        ir = "IR: " + ir + " unit";
+        lux = "Lux: " + lux + " unit";
+
         for (int i = 0; i < order.length(); i++){
             switch (order.charAt(i))
             {
             case 'T':
-                temperature = "Temperature: " + temperature + " C";  
-                screen.display_line(j++,0,temperature.toCharArray());
+                displayLine(&screen, j++, 0, "Temperature: ");
+                displayLine(&screen, j++, 0, temperature.toCharArray());
                 break;
             case 'H':
-                humidity = "Humidity: " + humidity;
-                screen.display_line(j++,0,humidity.toCharArray());
+                displayLine(&screen, j++, 0, humidity.toCharArray());
                 break;
             case 'P':
-                pressure = "Pressure: " + pressure + " hPa";
-                screen.display_line(j++,0,pressure.toCharArray());
+                displayLine(&screen, j++, 0, pressure.toCharArray());
                 break;
             case 'U':
+                displayLine(&screen, j++, 0, uv.toCharArray());
                 break;
             case 'I':
+                displayLine(&screen, j++, 0, ir.toCharArray());
                 break;
             case 'L':
+                displayLine(&screen, j++, 0, lux.toCharArray());
                 break;
             default:
                 break;
+            }
+        }
+        if (j > NUMBER_OF_LINE_SCREEN){
+            displayLine(&screen, 0, 0, "Format too long");
+            for (int i = 1; i < NUMBER_OF_LINE_SCREEN; i++){
+                displayLine(&screen, i, 0, "                ");
             }
         }
         screen.update_screen();
