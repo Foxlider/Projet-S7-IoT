@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import org.json.JSONObject;
 
@@ -26,8 +27,8 @@ public class MainActivity extends AppCompatActivity {
     private DatagramSocket UDPSocket; // Structure Java permettant d'accéder au réseau (UDP)
 
     private BlockingQueue<String> dataQueue = new ArrayBlockingQueue<String>(100);
-    private BlockingQueue<String> askQueue = new ArrayBlockingQueue<String>(100);
-    private ReceptionThread receptionThread = new ReceptionThread(askQueue);
+    private DemandeThread askThread = new DemandeThread();
+    private ReceptionThread receptionThread = new ReceptionThread();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +42,14 @@ public class MainActivity extends AppCompatActivity {
         EditText showText = findViewById(R.id.affichageTextEdit);
         Button btClear = findViewById(R.id.btnClear);
         Button btModify = findViewById(R.id.modifyButton);
+
+        //Définition des textes à afficher
+        TextView temText = findViewById(R.id.tempText);
+        TextView lumText = findViewById(R.id.lumText);
+        TextView humText = findViewById(R.id.humText);
+        TextView presText = findViewById(R.id.presText);
+        TextView uvText = findViewById(R.id.uvText);
+        TextView irText = findViewById(R.id.irText);
 
         //Définition des boutons de choix d'affichage
         Button btTemp = findViewById(R.id.btnTemp);
@@ -67,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
                 PORT = Integer.parseInt(portText.getText().toString());
                 try {address = InetAddress.getByName(IP);} catch (UnknownHostException e) {e.printStackTrace();}
                 dataQueue.add(showText.getText().toString());
-                askQueue.add("ask");
             }
         });
 
@@ -124,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
             UDPSocket = new DatagramSocket();
             address = InetAddress.getByName(IP);
             receptionThread.start();
+            askThread.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -132,6 +141,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         UDPSocket.close();
+        askThread.interrupt();
         receptionThread.interrupt();
     }
 
@@ -158,27 +168,61 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public class ReceptionThread extends Thread {
+    public class DemandeThread extends Thread {
 
-        private BlockingQueue<String> queueRecep;
-        public ReceptionThread(BlockingQueue<String> queue) {this.queueRecep = queue;}
+        public DemandeThread() {}
         public void run(){
+            String chaine = "getValue()";
+            byte[] b = chaine.getBytes();
+            DatagramPacket packet = new DatagramPacket(b,b.length, address, PORT);
+
             while(true){
                 try {
-                    queueRecep.take();
-                    String chaine = "getValue()";
-                    byte[] b = chaine.getBytes();
-                    DatagramPacket packet = new DatagramPacket(b,b.length, address, PORT);
                     UDPSocket.send(packet);
+                    Thread.sleep(3000);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
-                    byte[] recept = new byte[1024];
-                    DatagramPacket receptPacket = new DatagramPacket(recept, recept.length, address, PORT);
+    public class ReceptionThread extends Thread {
+
+        public ReceptionThread() {}
+        public void run(){
+            byte[] recept;
+            DatagramPacket receptPacket;
+
+            TextView temText = findViewById(R.id.tempText);
+            TextView lumText = findViewById(R.id.lumText);
+            TextView humText = findViewById(R.id.humText);
+            TextView presText = findViewById(R.id.presText);
+            TextView uvText = findViewById(R.id.uvText);
+            TextView irText = findViewById(R.id.irText);
+
+            String chaine2 = "Données reçues";
+            byte[] b = chaine2.getBytes();
+            String receveidChaine = "";
+            DatagramPacket packet = new DatagramPacket(b,b.length, address, PORT);
+            while(true){
+                try {
+                    recept = new byte[1024];
+                    receptPacket = new DatagramPacket(recept, recept.length, address, PORT);
                     UDPSocket.receive(receptPacket);
 
-                    chaine = "Données reçues";
-                    b = chaine.getBytes();
-                    packet = new DatagramPacket(b,b.length, address, PORT);
-                    UDPSocket.send(packet);
+                    receveidChaine = new String(receptPacket.getData(), java.nio.charset.StandardCharsets.UTF_8);
+
+                    JSONObject json = new JSONObject(receveidChaine);
+
+                    temText.setText("Température : " + json.getJSONObject("data").getString("temperature") + "°C");
+                    lumText.setText("Luminosité : " + json.getJSONObject("data").getString("luminosity") + "lm");
+                    humText.setText("Humidité : " + json.getJSONObject("data").getString("humidity"));
+                    presText.setText("Pression : " + json.getJSONObject("data").getString("pressure") + "hPa");
+                    uvText.setText("Ultraviolet : " + json.getJSONObject("data").getString("uv"));
+                    irText.setText("Infrarouge : " + json.getJSONObject("data").getString("ir"));
+
+                    UDPSocket.send(receptPacket);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

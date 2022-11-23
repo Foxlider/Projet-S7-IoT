@@ -22,18 +22,18 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/textView"
+                android:id="@+id/tempText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TextView" />
+                android:text="Température : " />
 
             <TextView
-                android:id="@+id/textView4"
+                android:id="@+id/lumText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TextView" />
+                android:text="Luminosité : " />
 
         </LinearLayout>
 
@@ -45,18 +45,18 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/textView2"
+                android:id="@+id/humText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TextView" />
+                android:text="Humidité : " />
 
             <TextView
-                android:id="@+id/textView5"
+                android:id="@+id/presText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TextView" />
+                android:text="Pression : " />
 
         </LinearLayout>
 
@@ -68,18 +68,18 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/textView3"
+                android:id="@+id/uvText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TextView" />
+                android:text="Ultraviolet : " />
 
             <TextView
-                android:id="@+id/textView6"
+                android:id="@+id/irText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TextView" />
+                android:text="Infrarouge : " />
 
         </LinearLayout>
     </LinearLayout>
