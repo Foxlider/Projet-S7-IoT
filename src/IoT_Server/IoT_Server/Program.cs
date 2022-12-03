@@ -124,7 +124,8 @@ void _serialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
 {
     string data = Globals._serialPort.ReadLine();
     Logger.Log(LogType.UART,$"{data}");
-    Globals.LAST_DATA = data;
+    if(data.Contains("|"))
+        Globals.LAST_DATA = data;
 };
 
 
