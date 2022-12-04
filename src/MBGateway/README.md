@@ -48,9 +48,11 @@ On receiving a message from the Radio Receiver, the Gateway will display an arro
     - UART Reception and Transmission
     - Animations
 
-> ### __Cahotic Trials__
+> ### __Chaotic Trials__
 
-Many walls were hit and many solutions were tried. 
+This part of the project was rather difficult. To overcome most obstacles, trial and error was used.
+- Programming several modules at the same time made it tricky for testing, hence why a lot of debug methods were used (one still being in final code)
+- Encryption was another tricky question, we ended up using a rather simple method of encryption, mostly because the data isn't sensible enough to warrant a stronger level of protection that would make the whole process slower
 
 > #### __UART Hell__
 One of the major issues encountered while developing the Gateway was the UART Reception :   
