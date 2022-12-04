@@ -11,6 +11,7 @@ You'll need five cables for the adapter and four cables for the weather sensor (
 Plug every cables and your OLED 128x64p screen on the breadboard accordinng to the following plan.
 
 | Microbit Breadboard Adapter | Weather Sensor | OLED Screen |
+|--|--|--|
 | 0V | GND | Gnd |
 | 3V | +3.3V | Vin |
 | P0 | --- | Rst |
@@ -34,6 +35,7 @@ The microbit will handle the communication with the Gateway Microbit and print d
 The Gateway communication happens through the radio module of microbit.
 
 | Format | Data |
+|--|--|
 | T | Temperature |
 | H | Humidity |
 | P | Pressure |
