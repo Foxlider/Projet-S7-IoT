@@ -1,8 +1,5 @@
 # MicroBit Gateway
 
-> Plug the Gateway Microbit and enjoy.
-
-
 > ## __Usage__
 
 
@@ -48,14 +45,15 @@ On receiving a message from the Radio Receiver, the Gateway will display an arro
     - UART Reception and Transmission
     - Animations
 
-> ### __Chaotic Trials__
+> ### __Difficulties faced__
 
 This part of the project was rather difficult. To overcome most obstacles, trial and error was used.
 - Programming several modules at the same time made it tricky for testing, hence why a lot of debug methods were used (one still being in final code)
 - Encryption was another tricky question, we ended up using a rather simple method of encryption, mostly because the data isn't sensible enough to warrant a stronger level of protection that would make the whole process slower
 
-> #### __UART Hell__
-One of the major issues encountered while developing the Gateway was the UART Reception :   
+> #### __Setting up the UART communication__
+
+One of the major issues encountered while developing the Gateway was the UART Reception:   
 The lack of documentation, examples and outdated libraries made very difficult to find answers to our issues. 
 After many tries, the gatewway code was unable to receive any message from the UART Port.
 - We considered switching to MicroPython but it did not allowed us to use events.
@@ -64,8 +62,8 @@ After many tries, the gatewway code was unable to receive any message from the U
 - We considered using the older and retiring [MBed Compiler](http://developer.mbed.org) advised by Lancaster University but due to the fact that the Lancaster Library is outdated since 2018, it was unable to compile successfuly.
 - We considered strenthening our minds and go on with C++ by trial and error
 
-After much failure and many headaches, we successfully fixed our UART Reception :  
-For a successful UART Connexion you need
+After much failure and many headaches, we successfully fixed our UART Reception:  
+For a successful UART Connexion you need:
 - `uBit.init();` to start the services
 - `serial.baud(115200);` to set the fixed baudrate
 - `uBit.messageBus.listen(MICROBIT_ID_SERIAL, MICROBIT_SERIAL_EVT_DELIM_MATCH, onSerial);`  to set up the event
