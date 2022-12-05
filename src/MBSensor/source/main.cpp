@@ -62,6 +62,12 @@ void displayLine(ssd1306* screen, uint8_t line, uint8_t col, const char* text)
     }
 }
 
+void clearScreen(ssd1306* screen){
+    for (int i = 0; i < NUMBER_OF_LINE_SCREEN; i++){
+        displayLine(screen, i, 0, "                ");
+    }
+}
+
 int main()
 {
     // Initialise the micro:bit runtime.
@@ -117,12 +123,13 @@ int main()
 
         int j = 0;
         temperature = temperature + " C";
-        humidity = "Humidity: " + humidity;
-        pressure = "Pressure: " + pressure + " hPa";
-        uv = "UV: " + uv + " unit";
-        ir = "IR: " + ir + " unit";
-        lux = "Lux: " + lux + " unit";
+        humidity = humidity + "";
+        pressure = pressure + " hPa";
+        uv = uv + "";
+        ir = ir + "";
+        lux = lux + "";
 
+        clearScreen(&screen);
         for (int i = 0; i < order.length(); i++){
             switch (order.charAt(i))
             {
@@ -131,18 +138,23 @@ int main()
                 displayLine(&screen, j++, 0, temperature.toCharArray());
                 break;
             case 'H':
+                displayLine(&screen, j++, 0, "Humidity: ");
                 displayLine(&screen, j++, 0, humidity.toCharArray());
                 break;
             case 'P':
+                displayLine(&screen, j++, 0, "Pressure: ");
                 displayLine(&screen, j++, 0, pressure.toCharArray());
                 break;
             case 'U':
+                displayLine(&screen, j++, 0, "UV: ");
                 displayLine(&screen, j++, 0, uv.toCharArray());
                 break;
             case 'I':
+                displayLine(&screen, j++, 0, "IR: ");
                 displayLine(&screen, j++, 0, ir.toCharArray());
                 break;
             case 'L':
+                displayLine(&screen, j++, 0, "Luminosity: ");
                 displayLine(&screen, j++, 0, lux.toCharArray());
                 break;
             default:
@@ -150,10 +162,8 @@ int main()
             }
         }
         if (j > NUMBER_OF_LINE_SCREEN){
+            clearScreen(&screen);
             displayLine(&screen, 0, 0, "Format too long");
-            for (int i = 1; i < NUMBER_OF_LINE_SCREEN; i++){
-                displayLine(&screen, i, 0, "                ");
-            }
         }
         screen.update_screen();
         uBit.sleep(1000);
