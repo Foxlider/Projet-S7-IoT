@@ -15,6 +15,9 @@ namespace IoT_Server.Models
         /// </summary>
         public static string LAST_DATA = "21.88|3577|983|125|14|0";
 
+
+        public static string Logfile = $"IoT_Server_{DateTime.Now.ToString("yyyy-MM-dd")}.log";
+
         /// <summary>
         /// UART Serial connexion
         /// </summary>

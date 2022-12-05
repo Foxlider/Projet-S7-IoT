@@ -94,7 +94,8 @@ namespace IoT_Server.Models
             try
             {
                 client.Send(data, data.Length, ep.Address.ToString(), ep.Port);     //Send the data to the IP and Port of the endpoint
-                Logger.Log(LogType.UDP, $"SENT: {ep.Address}:{ep.Port} : {text}");  //PRONT
+                //Logger.Log(LogType.UDP, $"SENT: {ep.Address}:{ep.Port} : {text}");  //PRONT
+                Logger.Log(LogType.UDP, $"SENT MESSAGE TO : {ep.Address}:{ep.Port}");  //PRONT
             }
             catch (Exception e)
             { Logger.Error(LogType.UDP, e.ToString()); }                            //On error, PRONT

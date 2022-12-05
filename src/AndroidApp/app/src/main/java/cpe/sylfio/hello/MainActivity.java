@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private BlockingQueue<String> dataQueue = new ArrayBlockingQueue<String>(100);
     private DemandeThread askThread = new DemandeThread();
     private ReceptionThread receptionThread = new ReceptionThread();
+    private EnvoiThread envoiThread = new EnvoiThread(dataQueue);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -120,9 +121,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //Starting the configuration sending thread
-        EnvoiThread envoiThread = new EnvoiThread(dataQueue);
-        envoiThread.start();
     }
 
     protected void onResume() {
@@ -133,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
             address = InetAddress.getByName(IP);
             receptionThread.start();
             askThread.start();
-            envoiThread.start()
+            envoiThread.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -142,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         //Interrupting Threads on Application Close
         super.onPause();
-        UDPSocket.close();
         askThread.interrupt();
         receptionThread.interrupt();
         envoiThread.interrupt();
@@ -184,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     //Send request every 3 seconds
                     UDPSocket.send(packet);
-                    Thread.sleep(3000);
+                    Thread.sleep(1000);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
