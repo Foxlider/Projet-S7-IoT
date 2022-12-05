@@ -32,6 +32,8 @@
                 Console.Write(Enum.GetName(type).PadRight(4));      //Print out the log type on 4 characters
                 Console.ResetColor();                               //Reset color of the Console
                 Console.WriteLine($"| {DateTime.Now} >> {line}");   //Print out the date and the line of log
+
+                File.AppendAllText(Globals.Logfile, $"{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffK")} | {Enum.GetName(type).PadRight(5)} | {line}\n");
             }
         }
 
@@ -52,6 +54,8 @@
                 Console.ForegroundColor = ConsoleColor.Red;     //Change color to RED for errors
                 Console.WriteLine($">> {line}");                //Print out the log line
                 Console.ResetColor();                           //Reset the color of the prompt
+
+                File.AppendAllText(Globals.Logfile, $"{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffK")} | {"ERROR"} | {line}\n");
             }
         }
     }
